@@ -1,0 +1,30 @@
+stages:
+  - static
+  - build
+
+static:
+  stage: static
+  image: python:3.10-alpine
+  before_script:
+    - pip install --upgrade pip
+    - pip install -r sqa-requirements.txt
+    - apk update && apk add shellcheck
+  script:
+    - pylama .
+    - pip-audit
+    - yamllint *.yml
+    - shellcheck *.sh
+
+build:
+  stage: build
+  image: registry.gitlab.com/henrikstroem/composer:latest
+  services:
+    - docker:dind
+  variables:
+    DOCKER_DRIVER: overlay2         # Specifies the Docker storage driver
+  before_script:
+    - docker login -u gitlab-ci-token -p "$CI_JOB_TOKEN" "$CI_REGISTRY"
+  script:
+    - docker build --pull -t "$CI_REGISTRY_IMAGE/coffee_shop:latest" .
+    - RTE=test docker-compose up --abort-on-container-exit --exit-code-from app
+    - docker push "$CI_REGISTRY_IMAGE/coffee_shop:latest"

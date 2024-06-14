@@ -1,0 +1,44 @@
+---
+services:
+
+  db:
+    image: postgres:13-alpine
+    volumes:
+      - ./dbscripts:/docker-entrypoint-initdb.d
+      - postgres_data:/var/lib/postgresql/data/
+    networks:
+      - dbnet
+    env_file:
+      - env
+
+  app:
+    image: coffee_shop:latest
+    volumes:
+      - .:/app/
+    networks:
+      - webnet
+      - dbnet
+    env_file:
+      - env
+    depends_on:
+      - db
+
+  nginx:
+    image: nginx:latest
+    networks:
+      - webnet
+    depends_on:
+      - app
+    volumes:
+      - ./config:/etc/nginx/conf.d:ro
+    ports:
+      - 8000:8000
+
+networks:
+  webnet:
+    driver: bridge
+  dbnet:
+    driver: bridge
+
+volumes:
+  postgres_data:
